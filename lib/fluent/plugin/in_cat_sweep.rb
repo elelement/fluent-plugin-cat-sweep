@@ -251,7 +251,7 @@ module Fluent
         entries << line if line
       end
       unless entries.empty?
-        time, content = parse_line(entries.join("\n"))
+        time, content = parse_line(entries.join("#{line_terminated_by}"))
         router.emit(@tag, time, content)
       end
     end
