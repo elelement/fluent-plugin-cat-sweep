@@ -20,7 +20,7 @@ module Fluent
     config_param :move_to,                 :string,  :default => '/tmp'
     config_param :remove_after_processing, :bool,    :default => false
     config_param :run_interval,            :time,    :default => 5
-    config_param :file_event_stream,       :bool,    :default => false
+    config_param :cat_mode,                :string,  :default => 'line' # line, stream, all
 
     # To support log_level option implemented by Fluentd v0.10.43
     unless method_defined?(:log)
@@ -41,15 +41,15 @@ module Fluent
       configure_parser(conf)
 
       if @processing_file_suffix.empty?
-        raise Fluent::ConfigError, "in_cat_sweep: `processing_file_suffix` must has some letters."
+        raise Fluent::ConfigError, "in_cat_sweep: `processing_file_suffix` must have some letters."
       end
 
       if @error_file_suffix.empty?
-        raise Fluent::ConfigError, "in_cat_sweep: `error_file_suffix` must has some letters."
+        raise Fluent::ConfigError, "in_cat_sweep: `error_file_suffix` must have some letters."
       end
 
       if @line_terminated_by.empty?
-        raise Fluent::ConfigError, "in_cat_sweep: `line_terminated_by` must has some letters."
+        raise Fluent::ConfigError, "in_cat_sweep: `line_terminated_by` must have some letters."
       end
 
       if !remove_file?
@@ -244,8 +244,19 @@ module Fluent
         end
       end
     end
-
-    def emit_file(fp)
+    
+    def emit_complete_file(fp)
+      entries = []
+      read_each_line(fp) do |line|
+        entries << line if line
+      end
+      unless entries.empty?
+        time, content = parse_line(entries.join("\n"))
+        router.emit(@tag, time, content)
+      end
+    end
+    
+    def emit_stream_file(fp)
       entries = []
       read_each_line(fp) do |line|
         if line
@@ -276,12 +287,20 @@ module Fluent
 
     def process(original_filename, processing_filename)
       File.open(processing_filename, 'r') do |tfile|
-        if @file_event_stream
-          emit_file(tfile)
-        else
+        if @mode.eql? 'stream'
+          log.info 'Mode \'stream\' selected'
+          emit_stream_file(tfile)
+        elsif @mode.eql? 'all'
+          log.info 'Mode \'all\' selected'
+          emit_complete_file(tfile)
+        elsif @mode.eql? 'line'
+          log.info 'Mode \'line\' selected'
           read_each_line(tfile) do |line|
             emit_line(line)
           end
+        else
+          log.error 'Unknown process mode. Please use one of the following: line, stream, all.'
+          raise ArgumentError.new('Unknown process mode. Please use one of the following: line, strema, all.')   
         end
         log.debug { %[in_cat_sweep: process: {filename:"#{original_filename}",size:#{tfile.size}}] }
       end
