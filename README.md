@@ -82,10 +82,13 @@ Our assumption is that this mechanism should provide more durability than `in_ta
   # Optional. default 5 seconds.
   run_interval 10
 
-  # Optional. Emit entire file contents as an event, default emits each line as an event.
-  # This assures that fluentd emits the entire file contents together. Please note that buffer_chunk_limit
-  # must be larger than bytes in a file to be sent by buffered output plugins such as out_forward, out_s3.
-  file_event_stream false
+  # Optional. Choose the default emitting mode for a file: "line", "stream" or "all".
+  # * line: emits the file line by line, each one as an independent message.
+  # * stream: emits the entire file contents as an event, default emits each line as an event (each line produces an individual message).
+  # * all: emits the whole file as a unique string.
+  # Both "stream" and "all" modes ensure that fluentd emits the entire file contents together. Please note that buffer_chunk_limit must be larger than bytes in a file to be sent by buffered output plugins such as out_forward, out_s3.
+  #
+  cat_mode stream
 </source>
 ```
 
