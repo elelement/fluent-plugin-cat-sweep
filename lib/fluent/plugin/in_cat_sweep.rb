@@ -287,13 +287,13 @@ module Fluent
 
     def process(original_filename, processing_filename)
       File.open(processing_filename, 'r') do |tfile|
-        if @mode.eql? 'stream'
+        if @cat_mode.eql? 'stream'
           log.info 'Mode \'stream\' selected'
           emit_stream_file(tfile)
-        elsif @mode.eql? 'all'
+        elsif @cat_mode.eql? 'all'
           log.info 'Mode \'all\' selected'
           emit_complete_file(tfile)
-        elsif @mode.eql? 'line'
+        elsif @cat_mode.eql? 'line'
           log.info 'Mode \'line\' selected'
           read_each_line(tfile) do |line|
             emit_line(line)
