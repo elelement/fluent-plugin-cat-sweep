@@ -37,6 +37,13 @@ class CatSweepInputTest < Test::Unit::TestCase
       ]
     end
 
+  CONFIG_MINIMUM_ALL_MODE =
+    CONFIG_BASE + %[
+      format none
+      waiting_seconds 5
+      cat_mode all
+    ]
+
   def create_driver(conf, use_v1 = true)
     driver = Fluent::Test::InputTestDriver.new(Fluent::CatSweepInput)
     if current_fluent_version < fluent_version('0.10.51')
@@ -74,8 +81,8 @@ class CatSweepInputTest < Test::Unit::TestCase
     d = create_driver(CONFIG_MINIMUM_REQUIRED + %[cat_mode stream])
     assert { 'stream' == d.instance.cat_mode }
 
-    d = create_driver(CONFIG_MINIMUM_REQUIRED + %[cat_mode all])
-    assert { 'all' == d.instance.cat_mode }    
+    d = create_driver(CONFIG_MINIMUM_ALL_MODE)
+    assert { 'all' == d.instance.cat_mode }
   end
 
   def compare_test_result(emits, tests)
