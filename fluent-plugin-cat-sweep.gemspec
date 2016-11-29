@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Civitaspo(takahiro.nakayama)", "Naotoshi Seo", "José M. Cabrera"]
   spec.email         = ["civitaspo@gmail.com", "sonots@gmail.com", "josele7@gmail.com"]
 
-  spec.summary       = %q{Fluentd plugin to cat files and move them.}
+  spec.summary       = %q{Fluentd plugin to cat files and move them. Fork from original project by Civitaspo.}
   spec.description   = spec.summary
   spec.homepage      = "https://github.com/civitaspo/fluent-plugin-cat-sweep"
   spec.license       = "MIT"
