@@ -67,12 +67,15 @@ class CatSweepInputTest < Test::Unit::TestCase
     assert_equal 5, d.instance.instance_variable_get(:@waiting_seconds)
   end
 
-  def test_configure_file_event_stream
+  def test_configure_cat_mode
     d = create_driver(CONFIG_MINIMUM_REQUIRED)
-    assert { false == d.instance.file_event_stream }
+    assert { 'line' == d.instance.cat_mode }
 
-    d = create_driver(CONFIG_MINIMUM_REQUIRED + %[file_event_stream true])
-    assert { true == d.instance.file_event_stream }
+    d = create_driver(CONFIG_MINIMUM_REQUIRED + %[cat_mode stream])
+    assert { 'stream' == d.instance.cat_mode }
+
+    d = create_driver(CONFIG_MINIMUM_REQUIRED + %[cat_mode all])
+    assert { 'all' == d.instance.cat_mode }    
   end
 
   def compare_test_result(emits, tests)
@@ -85,21 +88,22 @@ class CatSweepInputTest < Test::Unit::TestCase
     {
       'none' => [
         {'msg' => "tcptest1\n", 'expected' => 'tcptest1'},
-        {'msg' => "tcptest2\n", 'expected' => 'tcptest2'},
+        {'msg' => "tcptest2\n", 'expected' => 'tcptest2'}
       ],
       'tsv' => [
         {'msg' => "t.e.s.t.1\t12345\ttcptest1\t{\"json\":1}\n", 'expected' => '{"json":1}'},
-        {'msg' => "t.e.s.t.2\t54321\ttcptest2\t{\"json\":\"char\"}\n", 'expected' => '{"json":"char"}'},
+        {'msg' => "t.e.s.t.2\t54321\ttcptest2\t{\"json\":\"char\"}\n", 'expected' => '{"json":"char"}'}
       ],
       'json' => [
         {'msg' => {'k' => 123, 'message' => 'tcptest1'}.to_json + "\n", 'expected' => 'tcptest1'},
-        {'msg' => {'k' => 'tcptest2', 'message' => 456}.to_json + "\n", 'expected' => 456},
+        {'msg' => {'k' => 'tcptest2', 'message' => 456}.to_json + "\n", 'expected' => 456}
       ]
     }
 
-  [false, true].each do |file_event_stream|
+  # Only for "line by line" cat methods
+  ['line', 'stream'].each do |cat_mode|
     TEST_CASES.each do |format, test_cases|
-      test_case_name = "test_msg_process_#{format}_file_event_stream_#{file_event_stream}"
+      test_case_name = "test_msg_process_#{format}cat_mode#{cat_mode}"
       define_method(test_case_name) do
         File.open("#{TMP_DIR_FROM}/#{test_case_name}", 'w') do |io|
           test_cases.each do |test|
@@ -109,7 +113,7 @@ class CatSweepInputTest < Test::Unit::TestCase
 
         d = create_driver(CONFIG_BASE + %[
           format #{format}
-          file_event_stream #{file_event_stream}
+          cat_mode #{cat_mode}
           waiting_seconds 0
           keys hdfs_path,unixtimestamp,label,message
           ])
@@ -120,6 +124,48 @@ class CatSweepInputTest < Test::Unit::TestCase
       end
     end
   end
+
+  TEST_CASES_ALL_MODE =
+    {
+      'raw_json' => [
+        {'msg' => {'k' => 'tcptest2', 'message' => 456}.to_json + "\n", 'expected' => {'k' => 'tcptest2', 'message' => 456}.to_json},
+      ],
+      'multiline_text' => [
+        {'msg' => "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt \n
+          ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris \n
+          nisi ut aliquip ex ea commodo consequat.\n",
+         'expected' => "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt \n
+          ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris \n
+          nisi ut aliquip ex ea commodo consequat."
+        }
+      ]
+    }
+
+  print "Test cases for whole file content (always format none)\n"
+  TEST_CASES_ALL_MODE.each do |test_name, test_cases|
+    test_case_name = "test_msg_process_#{test_name}_noneallall"
+    define_method(test_case_name) do
+      File.open("#{TMP_DIR_FROM}/#{test_case_name}", 'w') do |io|
+        test_cases.each do |test|
+          io.write(test['msg'])
+        end
+      end
+
+      d = create_driver(CONFIG_BASE + %[
+        format none
+        cat_mode all
+        waiting_seconds 0
+        keys hdfs_path,unixtimestamp,label,message
+        ])
+      d.run
+
+      d.emits.each_index do |i|
+        assert { test_cases[i]['expected'] == d.emits[i][2]['message'] }
+      end
+      assert { Dir.glob("#{TMP_DIR_FROM}/#{test_case_name}*").empty? }
+    end
+  end
+
 
   def test_move_file
     format = 'tsv'
@@ -186,3 +232,4 @@ class CatSweepInputTest < Test::Unit::TestCase
         File.read(Dir.glob("#{TMP_DIR_FROM}/test_oneline_max_bytes*.error").first))
   end
 end
+
