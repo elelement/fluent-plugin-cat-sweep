@@ -55,10 +55,11 @@ module Fluent
       if @cat_mode == "all" && @format != "none"
         raise Fluent::ConfigError, "in_cat_sweep: `format` must be none if using cat_mode all."
       end
-
+	  
       if !remove_file?
         first_filename = Dir.glob(@file_path_with_glob).first
-        dirname = first_filename ? move_dirname(first_filename) : @move_to
+        #dirname = first_filename ? move_dirname(first_filename) : @move_to
+        dirname = @move_to
         if Dir.exist?(dirname)
           if !File.writable?(dirname)
             raise Fluent::ConfigError, "in_cat_sweep: `move_to` directory (#{dirname}) must be writable."
@@ -325,18 +326,13 @@ module Fluent
       end
     end
 
-    def move_dirname(filename)
-      File.join(@move_to, File.dirname(File.expand_path(filename)))
-    end
-
     def after_processing(processing_filename)
       if remove_file?
         FileUtils.rm(processing_filename)
       else
-        dirname = move_dirname(processing_filename)
-        FileUtils.mkdir_p(dirname)
+        FileUtils.mkdir_p(@move_to)
         filename = revert_processing_filename(File.basename(processing_filename))
-        FileUtils.mv(processing_filename, File.join(dirname, filename))
+        FileUtils.mv(processing_filename, @move_to)
       end
     end
   end
