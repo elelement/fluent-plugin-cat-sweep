@@ -52,6 +52,10 @@ module Fluent
         raise Fluent::ConfigError, "in_cat_sweep: `line_terminated_by` must have some letters."
       end
 
+      if @cat_mode == "all" && @format != "none"
+        raise Fluent::ConfigError, "in_cat_sweep: `format` must be none if using cat_mode all."
+      end
+	  
       if !remove_file?
         first_filename = Dir.glob(@file_path_with_glob).first
         #dirname = first_filename ? move_dirname(first_filename) : @move_to
@@ -252,7 +256,7 @@ module Fluent
         entries << line if line
       end
       unless entries.empty?
-        time, content = parse_line(entries.join("\n"))
+        time, content = parse_line(entries.join("#{line_terminated_by}"))
         router.emit(@tag, time, content)
       end
     end
