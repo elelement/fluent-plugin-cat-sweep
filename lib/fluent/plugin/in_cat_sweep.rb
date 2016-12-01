@@ -332,7 +332,9 @@ module Fluent
       else
         FileUtils.mkdir_p(@move_to)
         filename = revert_processing_filename(File.basename(processing_filename))
-        FileUtils.mv(processing_filename, @move_to)
+        destination = @move_to + "/" + filename
+        log.info "Move #{processing_filename} to #{destination}"
+        FileUtils.mv(processing_filename, destination)
       end
     end
   end
